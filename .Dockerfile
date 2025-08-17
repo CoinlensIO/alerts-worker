@@ -1,5 +1,5 @@
 # Build stage
-FROM --platform=linux/amd64 golang:1.23-alpine AS builder
+FROM --platform=linux/amd64 golang:1.24-alpine AS builder
 
 # Add only necessary build tools and add security
 RUN apk add --no-cache gcc musl-dev && \
