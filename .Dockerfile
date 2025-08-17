@@ -18,7 +18,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -trimpath -a \
     -ldflags="-s -w -extldflags '-static'" \
-    -o binance-mark-prices-sync \
+    -o alerts-worker \
     ./cmd
 
 # Final stage - using distroless for better security
