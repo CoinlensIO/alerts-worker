@@ -68,9 +68,7 @@ func main() {
 	eventHandler := event_handler.NewEventHandler(svc, logger, handlerOpts)
 
 	klinesSyncWorker := worker.NewWorker(redisClient, string(constants.BinanceMarkPriceAlertsQueue), eventHandler.HandleEvent, &worker.WorkerOptions{
-		WorkerCount:    2,
-		RequestsPerSec: 5,
-		BurstSize:      1,
+		WorkerCount: 600,
 	}, workerMetrics)
 
 	if err := klinesSyncWorker.Start(ctx); err != nil {

@@ -22,10 +22,6 @@ type WorkerMetrics struct {
 	WorkerLastSuccess *prometheus.GaugeVec
 	WorkerLastError   *prometheus.GaugeVec
 
-	// Rate limiting metrics
-	RateLimitWaitDuration *prometheus.HistogramVec
-	RateLimitExceeded     *prometheus.CounterVec
-
 	// Memory metrics
 	MemoryUsage *prometheus.GaugeVec
 }
@@ -111,23 +107,6 @@ func InitWorkerMetrics() *WorkerMetrics {
 			prometheus.GaugeOpts{
 				Name: "worker_last_error_timestamp",
 				Help: "Timestamp of last error",
-			},
-			[]string{"queue", "worker_id"},
-		),
-
-		RateLimitWaitDuration: promauto.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "worker_rate_limit_wait_duration_seconds",
-				Help:    "Time spent waiting for rate limiter",
-				Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5},
-			},
-			[]string{"queue", "worker_id"},
-		),
-
-		RateLimitExceeded: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "worker_rate_limit_exceeded_total",
-				Help: "Number of times rate limit was exceeded",
 			},
 			[]string{"queue", "worker_id"},
 		),

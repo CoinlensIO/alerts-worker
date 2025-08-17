@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/time/rate"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,9 +16,7 @@ import (
 )
 
 type WorkerOptions struct {
-	WorkerCount    int
-	RequestsPerSec float64
-	BurstSize      int
+	WorkerCount int
 }
 
 type Worker struct {
@@ -29,7 +26,6 @@ type Worker struct {
 	logger      zerolog.Logger
 	wg          sync.WaitGroup
 	workerCount int
-	rateLimiter *rate.Limiter
 	metrics     *metrics.WorkerMetrics
 	running     atomic.Bool
 	shutdownCtx context.Context
@@ -41,7 +37,6 @@ func NewWorker(client *redis.Client, key string, handler func(context.Context, *
 	if workerCount <= 0 {
 		workerCount = 1
 	}
-	rateLimiter := rate.NewLimiter(rate.Limit(opts.RequestsPerSec), opts.BurstSize)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Worker{
@@ -49,7 +44,6 @@ func NewWorker(client *redis.Client, key string, handler func(context.Context, *
 		key:         key,
 		handler:     handler,
 		workerCount: workerCount,
-		rateLimiter: rateLimiter,
 		metrics:     metrics,
 		shutdownCtx: ctx,
 		cancelFunc:  cancel,
@@ -80,23 +74,6 @@ func (w *Worker) process(ctx context.Context, workerID int) error {
 
 			// Set worker as idle
 			w.metrics.WorkerBusy.WithLabelValues(w.key, workerIDStr).Set(0)
-
-			// Wait for rate limiter
-			rateLimitStart := time.Now()
-			err := w.rateLimiter.Wait(ctx)
-			waitDuration := time.Since(rateLimitStart).Seconds()
-			w.metrics.RateLimitWaitDuration.WithLabelValues(w.key, workerIDStr).Observe(waitDuration)
-
-			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					logger.Info().Msg("context canceled during rate limiting")
-					return nil
-				}
-				w.metrics.RateLimitExceeded.WithLabelValues(w.key, workerIDStr).Inc()
-				logger.Error().Err(err).Msg("rate limiter error")
-				time.Sleep(1 * time.Second) // Add backoff on rate limit errors
-				continue
-			}
 
 			// Create a separate context with timeout for BRPop
 			brpopCtx, brpopCancel := context.WithTimeout(ctx, 10*time.Second)
